@@ -314,10 +314,14 @@ void setup()
   mqttClient.setServer(mqtt_server, 1883);
   mqttClient.setCallback(mqttCallback);
   sprintf(mqtt_topic, "/%s/switch", device_name);
+
+  setup_ota_updates();
 }
 
 void loop()
 {
+  ota_loop();
+  
   if (!mqttClient.connected())
   {
     mqttReconnect();
