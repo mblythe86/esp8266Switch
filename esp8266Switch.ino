@@ -5,24 +5,15 @@
 #include <ESP8266HTTPUpdateServer.h>
 #include <EEPROM.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
-#include <ESP8266mDNS.h>
+//#include <ESP8266mDNS.h>
 #include <JC_Button.h> 
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
-#include <PubSubClient.h>
+//#include <PubSubClient.h>
+#include <SoftwareSerial.h>
 
-
-#define ECOSWITCH 1
-#define NODEMCU 0
-
-#if ECOSWITCH
 #define BUTTON_PIN 13
-#define LED_PIN 15
-#endif
-
-#if NODEMCU
-#define BUTTON_PIN 0
-#define LED_PIN 16
-#endif
+#define RELAY_PIN  15
+#define LED_PIN     2
 
 #define PULLUP true
 #define INVERT true
@@ -34,18 +25,36 @@ Button myBtn(BUTTON_PIN, PULLUP, INVERT, DEBOUNCE_MS);    //Declare the button
 #define ON 0
 
 
-MDNSResponder mdns;
+//MDNSResponder mdns;
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 WiFiManager wifi;
 WiFiClient espClient;
-PubSubClient mqttClient(espClient);
+//PubSubClient mqttClient(espClient);
+SoftwareSerial tx0;
+//SoftwareSerial tx1; in use - TX
+//SoftwareSerial tx2; in use - LED
+//SoftwareSerial tx3; in use - RX
+SoftwareSerial tx4;
+SoftwareSerial tx5;
+//SoftwareSerial tx6;
+//SoftwareSerial tx7;
+//SoftwareSerial tx8;
+//SoftwareSerial tx9;
+//SoftwareSerial tx10;
+//SoftwareSerial tx11;
+SoftwareSerial tx12;
+//SoftwareSerial tx13; in use - button
+SoftwareSerial tx14;
+//SoftwareSerial tx15; in use - relay
+SoftwareSerial tx16;
 
 //define your default values here, if there are different values in config.json, they are overwritten.
 char device_name[40] = "espSwitch";
-char mqtt_topic[120];
-char mqtt_server[40];
-char mqtt_port[6] = "1883";
+char wifi_hostname[64];
+//char mqtt_topic[120];
+//char mqtt_server[40];
+//char mqtt_port[6] = "1883";
 
 int state = OFF;
 
@@ -146,29 +155,30 @@ void handle_off()
   state = OFF;
 }
 
-void mqttCallback(char* topic, byte* payload, unsigned int length)
-{
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-
-  //ON
-  if ((char)payload[1] == 'N')
-  {
-    handle_on();
-  }
-  else
-  {
-    handle_off();
-  }
-}
+//void mqttCallback(char* topic, byte* payload, unsigned int length)
+//{
+//  Serial.print("Message arrived [");
+//  Serial.print(topic);
+//  Serial.print("] ");
+//  for (int i = 0; i < length; i++) {
+//    Serial.print((char)payload[i]);
+//  }
+//  Serial.println();
+//
+//  //ON
+//  if ((char)payload[1] == 'N')
+//  {
+//    handle_on();
+//  }
+//  else
+//  {
+//    handle_off();
+//  }
+//}
 
 long lastReconnect = 0;
 
+/*
 void mqttReconnect()
 {
   long now = millis();
@@ -190,10 +200,18 @@ void mqttReconnect()
     }
   }
 }
+*/
 
 void setup()
 {
   Serial.begin(115200);
+  tx0.begin(115200, SWSERIAL_8N1, -1, 0);
+  tx4.begin(115200, SWSERIAL_8N1, -1, 4);
+  tx5.begin(115200, SWSERIAL_8N1, -1, 5);
+  tx12.begin(115200, SWSERIAL_8N1, -1, 12);
+  tx14.begin(115200, SWSERIAL_8N1, -1, 14);
+  tx16.begin(115200, SWSERIAL_8N1, -1, 16);
+
   pinMode(BUTTON_PIN, INPUT);
 
   //read configuration from FS json
@@ -220,8 +238,8 @@ void setup()
         {
           Serial.println("\nparsed json");
           strcpy(device_name, jsonDoc["device_name"]);
-          strcpy(mqtt_server, jsonDoc["mqtt_server"]);
-          strcpy(mqtt_port, jsonDoc["mqtt_port"]);
+          //strcpy(mqtt_server, jsonDoc["mqtt_server"]);
+          //strcpy(mqtt_port, jsonDoc["mqtt_port"]);
         }
         else
         {
@@ -237,8 +255,8 @@ void setup()
   }
 
   WiFiManagerParameter custom_device_name("devicename", "device name", device_name, 40);
-  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqtt_server, 40);
-  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", mqtt_port, 5);
+  WiFiManagerParameter custom_mqtt_server("server", "mqtt server", "" /*mqtt_server*/, 40);
+  WiFiManagerParameter custom_mqtt_port("port", "mqtt port", "" /*mqtt_port*/, 5);
 
    //set config save notify callback
   wifi.setSaveConfigCallback(saveConfigCallback);
@@ -250,9 +268,11 @@ void setup()
 
   //read updated parameters
   strcpy(device_name, custom_device_name.getValue());
-  strcpy(mqtt_server, custom_mqtt_server.getValue());
-  strcpy(mqtt_port, custom_mqtt_port.getValue());
+  //strcpy(mqtt_server, custom_mqtt_server.getValue());
+  //strcpy(mqtt_port, custom_mqtt_port.getValue());
 
+  sprintf(wifi_hostname, "espSwitch-%06x", ESP.getChipId());
+  wifi.setHostname(wifi_hostname);
   wifi.autoConnect(device_name);
   
   //save the custom parameters to FS
@@ -261,8 +281,8 @@ void setup()
     Serial.println("saving config");
     DynamicJsonDocument jsonDoc(1024);
     jsonDoc["device_name"] = device_name;
-    jsonDoc["mqtt_server"] = mqtt_server;
-    jsonDoc["mqtt_port"] = mqtt_port;
+    //jsonDoc["mqtt_server"] = mqtt_server;
+    //jsonDoc["mqtt_port"] = mqtt_port;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile)
@@ -277,6 +297,7 @@ void setup()
   Serial.print("mDNS Name: ");
   Serial.println(device_name);
 
+/*
   if (!mdns.begin(device_name, WiFi.localIP()))
   {
     Serial.println("Error setting up MDNS responder!");
@@ -285,6 +306,7 @@ void setup()
   {
     Serial.println("mDNS responder started");
   }
+  */
 
   // Start TCP (HTTP) server
   server.begin();
@@ -304,16 +326,17 @@ void setup()
 
   state = OFF;
   Serial.println("State: OFF");
+  pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
 
   Serial.print("local ip:");
   Serial.println(WiFi.localIP());
 
-  Serial.print("mqtt server Name: ");
-  Serial.println(mqtt_server);
-  mqttClient.setServer(mqtt_server, 1883);
-  mqttClient.setCallback(mqttCallback);
-  sprintf(mqtt_topic, "/%s/switch", device_name);
+  //Serial.print("mqtt server Name: ");
+  //Serial.println(mqtt_server);
+  //mqttClient.setServer(mqtt_server, 1883);
+  //mqttClient.setCallback(mqttCallback);
+  //sprintf(mqtt_topic, "/%s/switch", device_name);
 
   setup_ota_updates();
 }
@@ -322,13 +345,13 @@ void loop()
 {
   ota_loop();
   
-  if (!mqttClient.connected())
-  {
-    mqttReconnect();
-  }
+  //if (!mqttClient.connected())
+  //{
+  //  mqttReconnect();
+  //}
 
   server.handleClient();
-  mqttClient.loop();
+  //mqttClient.loop();
   myBtn.read();
 
   if (myBtn.wasPressed())
@@ -336,13 +359,13 @@ void loop()
     if (state == ON)
     {
       Serial.println("State: OFF");
-      mqttClient.publish(mqtt_topic, "OFF");
+      //mqttClient.publish(mqtt_topic, "OFF");
       state = OFF;
     }
     else
     {
       Serial.println("State: ON");
-      mqttClient.publish(mqtt_topic, "ON");
+      //mqttClient.publish(mqtt_topic, "ON");
       state = ON;
     }
   }
@@ -353,6 +376,19 @@ void loop()
     wifi.resetSettings();
     ESP.restart();
   }
-  digitalWrite(LED_PIN, state);
+  digitalWrite(RELAY_PIN, state);
+
+  if(wifi.getLastConxResult() == 3){ // WL_CONNECTED
+    digitalWrite(LED_PIN, ON);
+  }
+  else{
+    digitalWrite(LED_PIN,OFF);
+  }
+  tx0.println("GPIO 0");
+  tx4.println("GPIO 4");
+  tx5.println("GPIO 5");
+  tx12.println("GPIO 12");
+  tx14.println("GPIO 14");
+  tx16.println("GPIO 16");
 }
 
