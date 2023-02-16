@@ -6,7 +6,7 @@
 #include <EEPROM.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
 #include <ESP8266mDNS.h>
-#include <Button.h> 
+#include <JC_Button.h> 
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h>
 
@@ -112,11 +112,10 @@ void handle_post()
     Serial.println(server.arg(2));
 
     Serial.println("saving config");
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.createObject();
-    json["device_name"] = server.arg(0);
-    json["mqtt_server"] = server.arg(1);
-    json["mqtt_port"] = server.arg(2);
+    DynamicJsonDocument jsonDoc(1024);
+    jsonDoc["device_name"] = server.arg(0);
+    jsonDoc["mqtt_server"] = server.arg(1);
+    jsonDoc["mqtt_port"] = server.arg(2);
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile)
@@ -124,8 +123,8 @@ void handle_post()
       Serial.println("failed to open config file for writing");
     }
 
-    json.printTo(Serial);
-    json.printTo(configFile);
+    serializeJsonPretty(jsonDoc, Serial);
+    serializeJson(jsonDoc, configFile);
     configFile.close();
   }
   else
@@ -212,23 +211,22 @@ void setup()
       {
         Serial.println("opened config file");
         size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
-
-        configFile.readBytes(buf.get(), size);
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject& json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
-        if (json.success())
+        DynamicJsonDocument jsonDoc(size);
+        auto error = deserializeJson(jsonDoc,configFile);
+        //JsonObject& json = jsonDoc.parseObject(buf.get());
+        serializeJsonPretty(jsonDoc,Serial);
+        //json.printTo(Serial);
+        if (!error)
         {
           Serial.println("\nparsed json");
-          strcpy(device_name, json["device_name"]);
-          strcpy(mqtt_server, json["mqtt_server"]);
-          strcpy(mqtt_port, json["mqtt_port"]);
+          strcpy(device_name, jsonDoc["device_name"]);
+          strcpy(mqtt_server, jsonDoc["mqtt_server"]);
+          strcpy(mqtt_port, jsonDoc["mqtt_port"]);
         }
         else
         {
-          Serial.println("failed to load json config");
+          Serial.print("failed to load json config: ");
+          Serial.println(error.c_str());
         }
       }
     }
@@ -261,11 +259,10 @@ void setup()
   if (shouldSaveConfig)
   {
     Serial.println("saving config");
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.createObject();
-    json["device_name"] = device_name;
-    json["mqtt_server"] = mqtt_server;
-    json["mqtt_port"] = mqtt_port;
+    DynamicJsonDocument jsonDoc(1024);
+    jsonDoc["device_name"] = device_name;
+    jsonDoc["mqtt_server"] = mqtt_server;
+    jsonDoc["mqtt_port"] = mqtt_port;
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile)
@@ -273,8 +270,8 @@ void setup()
       Serial.println("failed to open config file for writing");
     }
 
-    json.printTo(Serial);
-    json.printTo(configFile);
+    serializeJsonPretty(jsonDoc,Serial);
+    serializeJson(jsonDoc,configFile);
     configFile.close();
   }
   Serial.print("mDNS Name: ");
