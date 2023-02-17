@@ -1,23 +1,21 @@
 #include <ArduinoOTA.h>
 
+#include "function_declarations.h"
+
 //extern String ota_passwd;
 //extern String wifi_hostname;
-char ota_hostname[64];
+extern char device_name[64];
 
-void setup_ota_updates(){
+void setup_ota_updates() {
   // Port defaults to 8266
   ArduinoOTA.setPort(8267);
 
-  // Hostname defaults to esp8266-[ChipID]
-  //char hostname[22];
-  sprintf(ota_hostname, "espSwitch-%06x", ESP.getChipId());
-  //wifi_hostname.toCharArray(ota_hostname,63);
-  ArduinoOTA.setHostname(ota_hostname);
+  ArduinoOTA.setHostname(device_name);
 
   // No authentication by default
   //Serial.println("Setting OTA password to " + ota_passwd);
   //ArduinoOTA.setPassword(ota_passwd.c_str());
-  
+
   ArduinoOTA.onStart([]() {
     Serial.println("Start");
   });
@@ -38,7 +36,6 @@ void setup_ota_updates(){
   ArduinoOTA.begin();
 }
 
-void ota_loop(){
+void ota_loop() {
   ArduinoOTA.handle();
 }
-
