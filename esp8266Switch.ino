@@ -10,19 +10,9 @@
 #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h>
 
-
-#define ECOSWITCH 1
-#define NODEMCU 0
-
-#if ECOSWITCH
 #define BUTTON_PIN 13
-#define LED_PIN 15
-#endif
-
-#if NODEMCU
-#define BUTTON_PIN 0
-#define LED_PIN 16
-#endif
+#define RELAY_PIN 15
+#define LED_PIN 2
 
 #define PULLUP true
 #define INVERT true
@@ -304,6 +294,7 @@ void setup()
 
   state = OFF;
   Serial.println("State: OFF");
+  pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
 
   Serial.print("local ip:");
@@ -320,6 +311,13 @@ void setup()
 
 void loop()
 {
+  if(wifi.getLastConxResult() == 3){ // WL_CONNECTED
+    digitalWrite(LED_PIN, ON);
+  }
+  else{
+    digitalWrite(LED_PIN,OFF);
+  }
+  
   ota_loop();
   
   if (!mqttClient.connected())
@@ -353,6 +351,6 @@ void loop()
     wifi.resetSettings();
     ESP.restart();
   }
-  digitalWrite(LED_PIN, state);
+  digitalWrite(RELAY_PIN, state);
 }
 
