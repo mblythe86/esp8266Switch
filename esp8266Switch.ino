@@ -31,6 +31,8 @@ void setup() {
   pinMode(RELAY_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
 
+  dps310_setup();
+
   setup_mqtt();
 
   setup_ota_updates();
@@ -52,6 +54,8 @@ void turn_on() {
 
 void loop() {
   wifi_loop(LED_PIN);
+
+  dps310_loop();
 
   ota_loop();
 

@@ -28,3 +28,7 @@ void reset_wifi();
 void setup_mqtt();
 void mqtt_loop();
 void mqtt_publish(String state);
+
+//dps310.ino
+void dps310_setup();
+void dps310_loop();
