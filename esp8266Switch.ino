@@ -12,9 +12,6 @@
 
 Button myBtn(BUTTON_PIN, PULLUP, INVERT, DEBOUNCE_MS);  //Declare the button
 
-#define OFF 1
-#define ON 0
-
 int state = OFF;
 
 void setup() {

@@ -33,11 +33,13 @@ void setup_wifi() {
   Serial.println(WiFi.localIP());
 }
 
+#define LED_OFF 1
+#define LED_ON 0
 void wifi_loop(uint pin) {
   if (wifi.getLastConxResult() == 3) {  // WL_CONNECTED
-    digitalWrite(pin, ON);
+    digitalWrite(pin, LED_ON);
   } else {
-    digitalWrite(pin, OFF);
+    digitalWrite(pin, LED_OFF);
   }
 }
 

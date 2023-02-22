@@ -2,6 +2,8 @@
 
 #include "function_declarations.h"
 
+extern int state;
+
 ESP8266WebServer server(80);
 
 const char* index_html =
@@ -60,6 +62,18 @@ void handle_off() {
   server.send(200, "text/plain", "ok");
 }
 
+void handle_status() {
+  if(state == ON){
+    server.send(200, "text/plain", "on");
+  }
+  else if(state == OFF){
+    server.send(200, "text/plain", "off");
+  }
+  else{
+    server.send(200, "text/plain", "unknown");
+  }
+}
+
 void http_setup() {
   // Start TCP (HTTP) server
   server.begin();
@@ -69,6 +83,8 @@ void http_setup() {
   server.on("/", HTTP_POST, handle_post);
   server.on("/on", handle_on);
   server.on("/off", handle_off);
+  server.on("/status", handle_status);
+  server.on("/state", handle_status);
   server.onNotFound(handleNotFound);
 }
 

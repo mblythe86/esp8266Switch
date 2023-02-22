@@ -1,4 +1,6 @@
 //esp8266Switch.ino
+#define OFF 0
+#define ON 1
 void turn_off();
 void turn_on();
 
